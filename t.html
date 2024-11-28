@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Weavy Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+</head>
+<body>
+<h1>Weavy Test</h1>
+
+<div class="container">
+    <!-- Button to open the Add User Modal -->
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+        Add New User
+    </button>
+
+    <!-- Add User Modal -->
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="container">
+                    <form id="addUserForm">
+                        <div class="mb-3">
+                            <label for="user_id" class="form-label">User Id</label>
+                            <input type="text" class="form-control" id="user_id">
+                        </div>
+                        <div class="mb-3">
+                            <label for="user_name" class="form-label">User Name</label>
+                            <input type="text" class="form-control" id="user_name">
+                        </div>
+                        <button id="btn_save_user" type="submit" class="btn btn-primary">Submit</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update User Modal -->
+    <div class="modal fade" id="updateUserModal" tabindex="-1" aria-labelledby="updateUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="container">
+                    <form id="updateUserForm">
+                        <div class="mb-3">
+                            <label for="update_user_id" class="form-label">User Id</label>
+                            <input type="text" class="form-control" id="update_user_id" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="update_user_name" class="form-label">User Name</label>
+                            <input type="text" class="form-control" id="update_user_name">
+                        </div>
+                        <button id="btn_update_user" type="submit" class="btn btn-primary">Update</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dropdown for Users -->
+    <div class="mb-3">
+        <label for="user_dropdown" class="form-label">Select User</label>
+        <select id="user_dropdown" class="form-select">
+            <option value="">--Select User--</option>
+        </select>
+    </div>
+
+    <!-- Users Data Table -->
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <td>UID</td>
+            <td>Name</td>
+            <td>Create At</td>
+            <td>Actions</td>
+        </tr>
+        </thead>
+        <tbody id="user_table_body">
+        <!-- User data will be injected here dynamically -->
+        </tbody>
+    </table>
+</div>
+
+<script src="js/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Function to render users in the dropdown and table
+    function renderUsers() {
+        $.ajax({
+            url: "https://b578cc8fe28543ec98ebbbac35f1237a.weavy.io/api/users",
+            type: 'GET',
+            headers: {'Authorization': 'Bearer wys_pOMhfi31AnEDRSYYFHb42tFtm5Lluo4Jrlqv'},
+            success: (res) => {
+                const users = res.data;
+                const dropdown = $('#user_dropdown');
+                const tableBody = $('#user_table_body');
+
+                // Clear existing dropdown options and table data
+                dropdown.empty();
+                tableBody.empty();
+
+                // Add default option to the dropdown
+                dropdown.append('<option value="">--Select User--</option>');
+
+                // Add users to the dropdown and table
+                users.forEach(user => {
+                    // Populate dropdown
+                    dropdown.append(`
+                        <option value="${user.uid}">${user.display_name}</option>
+                    `);
+
+                    // Populate table
+                    tableBody.append(`
+                        <tr>
+                            <td>${user.uid}</td>
+                            <td>${user.display_name}</td>
+                            <td>${user.created_at}</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm" onclick="editUser('${user.uid}', '${user.display_name}')">Edit</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.uid}')">Delete</button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            },
+            error: (err) => {
+                console.error(err);
+            }
+        });
+    }
+
+    // Add User (POST request)
+    $('#addUserForm').submit((e) => {
+        e.preventDefault();
+        const userId = $('#user_id').val();
+        const userName = $('#user_name').val();
+        const userData = {uid: userId, name: userName};
+
+        $.ajax({
+            url: "https://b578cc8fe28543ec98ebbbac35f1237a.weavy.io/api/users",
+            type: 'POST',
+            headers: {
+                'Authorization': 'Bearer wys_pOMhfi31AnEDRSYYFHb42tFtm5Lluo4Jrlqv',
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify(userData),
+            success: () => {
+                $('#exampleModal').modal('hide');
+                renderUsers();  // Re-fetch and update the dropdown and table
+            },
+            error: (err) => {
+                console.error(err);
+            }
+        });
+    });
+
+    // Edit User (Populate the modal with user data)
+    const editUser = (uid, name) => {
+        $('#update_user_id').val(uid);
+        $('#update_user_name').val(name);
+        $('#updateUserModal').modal('show');
+    };
+
+    // Update User (PUT request)
+    $('#updateUserForm').submit((e) => {
+        e.preventDefault();
+        const userId = $('#update_user_id').val();
+        const userName = $('#update_user_name').val();
+        const userData = {uid: userId, name: userName};
+
+        $.ajax({
+            url: `https://b578cc8fe28543ec98ebbbac35f1237a.weavy.io/api/users`,
+        type: 'PUT',
+            headers: {
+            'Authorization': 'Bearer wys_pOMhfi31AnEDRSYYFHb42tFtm5Lluo4Jrlqv',
+                'Content-Type': 'application/json'
+        },
+        data: JSON.stringify(userData),
+            success: () => {
+            $('#updateUserModal').modal('hide');
+            renderUsers();
+        },
+            error: (err) => {
+            console.error(err);
+        }
+    });
+    });
+
+    // Delete User (DELETE request)
+    const deleteUser = (uid) => {
+        if (confirm(`Are you sure you want to delete user with ID ${uid}?`)) {
+            $.ajax({
+                url: `https://755fba925d534103947911c291a0956e.weavy.io/api/users/${uid}`,
+            type: 'DELETE',
+                headers: {'Authorization': 'Bearer wys_nakcrXPAp57uZ2068FrAxlSLQNaozd1AEdzF'},
+            success: () => {
+                renderUsers();
+            },
+                error: (err) => {
+                console.error(err);
+            }
+        });
+        }
+    };
+
+    // Initial call to render users on page load
+    renderUsers();
+</script>
+</body>
+</html>
